@@ -1,386 +1,491 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CRT TV + Analog Video Synth — Single Pass + Feedback + Mod Matrix + Audio + Presets + Extras</title>
-  <style>
-    :root{--bg:#0b0e12;--muted:#9aa4b2;--text:#e5f0ff;--ok:#22c55e;--bad:#ef4444}
-    html,body{height:100%;margin:0;background:#000;color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
-    body{display:grid;grid-template-columns:500px 1fr}
-    aside{background:#0b1118;padding:12px 14px;border-right:1px solid #1e293b;overflow:auto}
-    h2{font-size:13px;color:var(--muted);margin:10px 0 6px}
-    label{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0}
-    input[type=range],input[type=text],input[type=number],select{width:248px}
-    input[type=text],input[type=number],select{background:#0b1118;border:1px solid #2a3443;color:#cbd5e1;border-radius:8px;padding:6px}
-    .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-    .btn{display:inline-flex;align-items:center;gap:6px;background:#0d1520;border:1px solid #1e293b;color:var(--text);padding:7px 10px;border-radius:10px;cursor:pointer}
-    .btn:hover{border-color:#334155}
-    canvas{width:100%;height:100%;display:block;background:#000}
-    .badge{position:fixed;left:12px;top:12px;background:#0b1118;border:1px solid #1e293b;color:#9fb3c8;padding:4px 8px;border-radius:999px;font-size:12px;opacity:.9;z-index:2}
-    #testlog{white-space:pre-line;background:#0b1118;border:1px solid #2a3443;border-radius:8px;padding:8px;color:#cbd5e1;max-height:240px;overflow:auto}
-    .ok{color:var(--ok)}.bad{color:var(--bad)}
-    .file{display:none}
-    .group{border:1px solid #1e293b;border-radius:10px;padding:8px;margin-bottom:8px;background:#0b1118}
-    table.mm{width:100%;border-collapse:collapse;font-size:12px}
-    .mm th,.mm td{border:1px solid #1e293b;padding:4px;text-align:center}
-    .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
-  </style>
+<meta charset="UTF-8" />
+<title>WEBGL CRT — Full UI (Merged)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --bg:#0b1118;--bg2:#0e1523;--panel:#101826;--card:#0f1522;--soft:#1c2740;
+    --ink:#e6eef8;--muted:#9fb3c8;--accent:#ff4d4d;--line:#1e293b;
+    --orange:#ffb84d;--blue:#66b3ff;--purple:#b366ff;--green:#66ff99;--red:#ff6666;--gray:#ccc;
+  }
+  html,body{height:100%}
+  body{
+    margin:0;display:grid;grid-template-columns:420px 1fr;height:100%;
+    background:#000;color:var(--ink);font:13px/1.35 system-ui,Segoe UI,Roboto,Ubuntu;
+    overflow:hidden;
+  }
+  aside{background:var(--bg);border-right:1px solid var(--line);overflow:auto;padding:12px}
+  canvas{display:block;width:100%;height:100%;background:#000}
+  .section{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:10px;margin:10px 0}
+  .section h3{margin:0 0 10px;font:600 12px/1 system-ui;color:var(--muted)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}
+  .btn{
+    background:var(--bg2);border:1px solid var(--soft);color:var(--ink);
+    border-radius:10px;padding:6px 10px;cursor:pointer;user-select:none
+  }
+  .btn:hover{border-color:#324155}
+  label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:4px 0}
+  input[type=range],input[type=text],input[type=number],select{width:240px}
+  input[type=text],input[type=number],select{
+    background:var(--card);border:1px solid var(--soft);border-radius:10px;color:var(--ink);padding:6px
+  }
+  .pill{font-size:11px;color:#94a9c4;border:1px solid var(--soft);border-radius:999px;padding:4px 8px;display:inline-block;margin-bottom:6px}
+  .small{font-size:12px;color:#9fb3c8}
+  .orange h3{color:var(--orange)} .blue h3{color:var(--blue)} .purple h3{color:var(--purple)}
+  .green h3{color:var(--green)} .red h3{color:var(--red)} .gray h3{color:var(--gray)}
+  #log{white-space:pre-wrap;background:#0b0f16;border:1px solid #223;border-radius:8px;padding:8px;color:#9fb3c8}
+  /* fullscreen fallback (policy-safe) */
+  .pf aside{display:none}
+  .pf canvas{position:fixed;inset:0;width:100vw;height:100vh}
+</style>
 </head>
 <body>
-  <aside>
-    <h2>Source</h2>
-    <div class="row">
-      <label class="btn" for="fileImg">Upload Image<input id="fileImg" class="file" type="file" accept="image/*"></label>
-      <label class="btn" for="fileVid">Upload Video<input id="fileVid" class="file" type="file" accept="video/*"></label>
-      <button id="usePattern" class="btn" type="button">Use Test Pattern</button>
-      <button id="useSynth" class="btn" type="button">Use Synth</button>
-    </div>
-    <div class="row">
-      <button id="playPause" class="btn" type="button">Play</button>
-      <button id="muteBtn" class="btn" type="button">Mute</button>
-      <span class="mono" id="timecode">00:00 / 00:00</span>
-    </div>
+  <aside id="ui">
+    <div class="pill">WEBGL CRT</div>
 
-    <div class="group">
-      <h2>Presets</h2>
+    <!-- Source -->
+    <div class="section orange">
+      <h3>Source</h3>
       <div class="row">
-        <select id="presetSelect">
-          <option value="none">— choose —</option>
-          <option value="Nebula Trails">Nebula Trails</option>
-          <option value="Kaleido Drift">Kaleido Drift</option>
-          <option value="RGB Tear">RGB Tear</option>
-          <option value="Soft Scan">Soft Scan</option>
-        </select>
-        <button id="presetLoad" class="btn">Load</button>
-        <button id="presetRand" class="btn">Randomize</button>
-        <button id="presetSave" class="btn">Save Snapshot</button>
+        <button id="btnImg" class="btn">Upload Image</button>
+        <button id="btnVid" class="btn">Upload Video</button>
+        <button id="btnTP"  class="btn">Use Test Pattern</button>
+        <button id="btnSynth" class="btn">Use Synth</button>
+        <input id="fileImg" type="file" accept="image/*" hidden />
+        <input id="fileVid" type="file" accept="video/*" hidden />
+      </div>
+      <div class="row">
+        <button id="btnPlay" class="btn">Play</button>
+        <button id="btnMute" class="btn">Mute</button>
+        <span id="time">00:00 / 00:00</span>
       </div>
     </div>
 
-    <div class="group">
-      <h2>Audio‑Reactive</h2>
+    <!-- Presets -->
+    <div class="section">
+      <h3>Presets</h3>
+      <div class="row">
+        <select id="preset">
+          <option value="">— choose —</option>
+          <option>Kaleido Drift</option>
+          <option>Minimal CRT</option>
+          <option>Liquid Plasma</option>
+          <option>Cellular Drift</option>
+          <option>Pixel Glow</option>
+          <option>Retro Arcade</option>
+          <option>Calm Geometry</option>
+          <option>Ghost Trails</option>
+        </select>
+        <button id="btnLoad" class="btn">Load</button>
+        <button id="btnRand" class="btn">Randomize</button>
+      </div>
+      <div class="row">
+        <button id="btnSnap" class="btn">Save Snapshot</button>
+      </div>
+      <div class="row">
+        <label>Live Cycle <input id="live" type="checkbox" /></label>
+        <label>Time (s) <input id="liveSecs" type="number" min="3" max="120" value="20" /></label>
+        <label>Blend <select id="liveBlend"><option value="cut">Cut</option><option value="blend">Blend</option></select></label>
+      </div>
+    </div>
+
+    <!-- Audio reactive -->
+    <div class="section gray">
+      <h3>Audio-Reactive</h3>
       <label>Source
-        <select id="audSrc">
-          <option value="off">Off</option>
-          <option value="mic">Microphone</option>
-          <option value="video">Video Audio</option>
-        </select>
+        <select id="audSrc"><option value="off">Off</option><option value="mic">Microphone</option><option value="video">Video Audio</option></select>
       </label>
       <div class="row">
-        <button id="audEnable" class="btn">Enable Mic</button>
-        <span class="mono" id="audReadout">low:0 mid:0 hi:0</span>
+        <button id="btnMic" class="btn">Enable Mic</button>
+        <span class="small">low:<span id="vL">0</span> mid:<span id="vM">0</span> hi:<span id="vH">0</span></span>
       </div>
     </div>
 
-    <div class="group">
-      <h2>Synth (Lumen/Cathodemer‑style)</h2>
-      <label>Hue Shift <input id="synHue" type="range" min="0" max="1" step="0.001" value="0.33"></label>
-      <label>Hue Intensity <input id="synHueDepth" type="range" min="0" max="1.5" step="0.001" value="0.6"></label>
-      <label>Key Thresh <input id="synKey" type="range" min="0" max="1" step="0.001" value="0.15"></label>
-      <label>Key Soft <input id="synSoft" type="range" min="0" max="0.5" step="0.001" value="0.08"></label>
-      <label>Rotate Speed (°/s) <input id="synRotSpd" type="range" min="-120" max="120" step="0.1" value="0"></label>
+    <!-- Synth -->
+    <div class="section blue">
+      <h3>Synth (Lumen/Cathodemer-style)</h3>
+      <label>Hue Shift <input id="synHue" type="range" min="0" max="1" step="0.001" value="0.33" /></label>
+      <label>Hue Intensity <input id="synHueD" type="range" min="0" max="1.5" step="0.001" value="0.6" /></label>
+      <label>Key Threshold <input id="synKey" type="range" min="0" max="1" step="0.001" value="0.15" /></label>
+      <label>Key Softness <input id="synSoft" type="range" min="0" max="0.5" step="0.001" value="0.08" /></label>
+      <label>Rotate Speed (°/s) <input id="synRotSpd" type="range" min="-90" max="90" step="0.1" value="0" /></label>
+
       <div class="row"><strong>Osc A</strong></div>
-      <label>Wave A <select id="synWaveA"><option value="0">Sine</option><option value="1">Saw</option><option value="2">Square</option><option value="3">Triangle</option><option value="4">Noise</option><option value="5">Steps</option><option value="6">Trapezoid</option><option value="7">Exp Saw</option></select></label>
-      <label>Freq A (cyc) <input id="synAF" type="range" min="0" max="30" step="0.01" value="6"></label>
-      <label>Angle A (°) <input id="synAA" type="range" min="-180" max="180" step="0.1" value="0"></label>
-      <label>LFO A rate (Hz) <input id="lfoARate" type="range" min="0" max="4" step="0.001" value="0.2"></label>
-      <label>LFO A →F/P/A <input id="lfoA_F" type="range" min="0" max="1" step="0.001" value="0.0"></label>
-      <label><span></span><input id="lfoA_P" type="range" min="0" max="1" step="0.001" value="0.2"></label>
-      <label><span></span><input id="lfoA_A" type="range" min="0" max="1" step="0.001" value="0.0"></label>
+      <label>Wave A
+        <select id="waveA"><option>Sine</option><option>Square</option><option>Triangle</option><option>Saw</option><option>Trapezoid</option></select>
+      </label>
+      <label>Freq A (cyc) <input id="freqA" type="range" min="0" max="20" step="0.01" value="2.0" /></label>
+      <label>Angle A (°) <input id="angA" type="range" min="-180" max="180" step="0.1" value="0" /></label>
+
       <div class="row"><strong>Osc B</strong></div>
-      <label>Wave B <select id="synWaveB"><option value="0">Sine</option><option value="1">Saw</option><option value="2">Square</option><option value="3">Triangle</option><option value="4">Noise</option><option value="5">Steps</option><option value="6">Trapezoid</option><option value="7">Exp Saw</option></select></label>
-      <label>Freq B (cyc) <input id="synBF" type="range" min="0" max="30" step="0.01" value="9"></label>
-      <label>Angle B (°) <input id="synBA" type="range" min="-180" max="180" step="0.1" value="90"></label>
-      <label>LFO B rate (Hz) <input id="lfoBRate" type="range" min="0" max="4" step="0.001" value="0.12"></label>
-      <label>LFO B →F/P/A <input id="lfoB_F" type="range" min="0" max="1" step="0.001" value="0.0"></label>
-      <label><span></span><input id="lfoB_P" type="range" min="0" max="1" step="0.001" value="0.25"></label>
-      <label><span></span><input id="lfoB_A" type="range" min="0" max="1" step="0.001" value="0.0"></label>
+      <label>Wave B
+        <select id="waveB"><option>Sine</option><option>Square</option><option>Triangle</option><option>Saw</option><option>Trapezoid</option></select>
+      </label>
+      <label>Freq B (cyc) <input id="freqB" type="range" min="0" max="20" step="0.01" value="3.5" /></label>
+      <label>Angle B (°) <input id="angB" type="range" min="-180" max="180" step="0.1" value="45" /></label>
+
       <div class="row"><strong>Osc C</strong></div>
-      <label>Wave C <select id="synWaveC"><option value="0">Sine</option><option value="1">Saw</option><option value="2">Square</option><option value="3">Triangle</option><option value="4">Noise</option><option value="5">Steps</option><option value="6">Trapezoid</option><option value="7">Exp Saw</option></select></label>
-      <label>Freq C (cyc) <input id="synCF" type="range" min="0" max="30" step="0.01" value="4.5"></label>
-      <label>Angle C (°) <input id="synCA" type="range" min="-180" max="180" step="0.1" value="45"></label>
-      <label>LFO C rate (Hz) <input id="lfoCRate" type="range" min="0" max="4" step="0.001" value="0.3"></label>
-      <label>LFO C →F/P/A <input id="lfoC_F" type="range" min="0" max="1" step="0.001" value="0.0"></label>
-      <label><span></span><input id="lfoC_P" type="range" min="0" max="1" step="0.001" value="0.18"></label>
-      <label><span></span><input id="lfoC_A" type="range" min="0" max="1" step="0.001" value="0.0"></label>
-      <div class="row"><strong>Waveform params</strong></div>
-      <label>Steps count <input id="wfSteps" type="range" min="1" max="64" step="1" value="8"></label>
-      <label>Trap top (0–1) <input id="wfTrap" type="range" min="0" max="1" step="0.001" value="0.3"></label>
-      <label>Exp Saw k <input id="wfExpK" type="range" min="0.1" max="8" step="0.01" value="2.5"></label>
+      <label>Wave C
+        <select id="waveC"><option>Sine</option><option>Square</option><option>Triangle</option><option>Saw</option><option>Trapezoid</option></select>
+      </label>
+      <label>Freq C (cyc) <input id="freqC" type="range" min="0" max="20" step="0.01" value="1.0" /></label>
+      <label>Angle C (°) <input id="angC" type="range" min="-180" max="180" step="0.1" value="120" /></label>
+
+      <div class="row"><strong>Shape</strong></div>
+      <label>Circle Amount <input id="shapeAmt" type="range" min="0" max="1" step="0.001" value="0.0" /></label>
+      <label>Circle Size <input id="shapeSize" type="range" min="0" max="1" step="0.001" value="0.5" /></label>
+      <label>Circle Softness <input id="shapeSoft" type="range" min="0" max="1" step="0.001" value="0.2" /></label>
     </div>
 
-    <div class="group">
-      <h2>Shape Oscillator</h2>
-      <label>Type <select id="shapeType"><option value="0">Off</option><option value="1">Circle</option><option value="2">Polygon</option><option value="3">Spiral</option></select></label>
-      <label>Sides/Turns <input id="shapeSides" type="range" min="3" max="12" step="1" value="6"></label>
-      <label>Amount <input id="shape2Amt" type="range" min="0" max="1" step="0.001" value="0.0"></label>
-      <label>Size <input id="shape2Size" type="range" min="0.05" max="1.0" step="0.001" value="0.45"></label>
-      <label>Softness <input id="shape2Soft" type="range" min="0.0" max="0.5" step="0.001" value="0.08"></label>
-      <label>Rotation (°/s) <input id="shape2Rot" type="range" min="-180" max="180" step="0.1" value="15"></label>
-    </div>
-
-    <div class="group">
-      <h2>Particle Emitter</h2>
-      <label>Count <input id="pCount" type="range" min="0" max="64" step="1" value="24"></label>
-      <label>Size <input id="pSize" type="range" min="0.2" max="6" step="0.01" value="2.0"></label>
-      <label>Speed <input id="pSpeed" type="range" min="0.0" max="5" step="0.01" value="1.2"></label>
-      <label>React (video) <input id="pReact" type="range" min="0" max="2" step="0.01" value="1.0"></label>
-      <label>Link Lines <select id="pLink"><option value="0">Off</option><option value="1">On</option></select></label>
-    </div>
-
-    <div class="group">
-      <h2>Kaleidoscope</h2>
-      <label>Segments <input id="kSeg" type="range" min="1" max="12" step="1" value="1"></label>
-      <label>Rotation (°) <input id="kRot" type="range" min="-180" max="180" step="0.1" value="0"></label>
-    </div>
-
-    <div class="group">
-      <h2>Mod Matrix (per‑osc target: Freq / Phase / Amp)</h2>
-      <table class="mm">
-        <tr><th></th><th colspan="3">A target</th><th colspan="3">B target</th><th colspan="3">C target</th></tr>
-        <tr><th>Source</th><th>F</th><th>P</th><th>A</th><th>F</th><th>P</th><th>A</th><th>F</th><th>P</th><th>A</th></tr>
-        <tr><td>Osc A</td>
-          <td><input id="mm_a_FA" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_a_PA" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_a_AA" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_a_FB" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_a_PB" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_a_AB" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_a_FC" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_a_PC" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_a_AC" type="range" min="0" max="2" step="0.001" value="0"></td>
-        </tr>
-        <tr><td>Osc B</td>
-          <td><input id="mm_b_FA" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_b_PA" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_b_AA" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_b_FB" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_b_PB" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_b_AB" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_b_FC" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_b_PC" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_b_AC" type="range" min="0" max="2" step="0.001" value="0"></td>
-        </tr>
-        <tr><td>Osc C</td>
-          <td><input id="mm_c_FA" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_c_PA" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_c_AA" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_c_FB" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_c_PB" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_c_AB" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_c_FC" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_c_PC" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_c_AC" type="range" min="0" max="2" step="0.001" value="0"></td>
-        </tr>
-        <tr><td>Audio</td>
-          <td><input id="mm_x_FA" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_x_PA" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_x_AA" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_x_FB" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_x_PB" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_x_AB" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_x_FC" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_x_PC" type="range" min="0" max="2" step="0.001" value="0"></td>
-          <td><input id="mm_x_AC" type="range" min="0" max="2" step="0.001" value="0"></td>
-        </tr>
-      </table>
-    </div>
-
-    <div class="group">
-      <h2>Cross‑Modulation (simple)</h2>
-      <label>A ➜ B FM (freq) <input id="abFM" type="range" min="0" max="2.0" step="0.001" value="0.0"></label>
-      <label>B ➜ C PM (phase) <input id="bcPM" type="range" min="0" max="2.0" step="0.001" value="0.0"></label>
-      <label>C ➜ A RM (ring) <input id="caRM" type="range" min="0" max="1.0" step="0.001" value="0.0"></label>
-    </div>
-
-    <div class="group">
-      <h2>Per‑Channel Modulation</h2>
-      <label>R ⇢ Osc A amt <input id="modR" type="range" min="0" max="1" step="0.001" value="0.0"></label>
-      <label>G ⇢ Osc B amt <input id="modG" type="range" min="0" max="1" step="0.001" value="0.0"></label>
-      <label>B ⇢ Osc C amt <input id="modB" type="range" min="0" max="1" step="0.001" value="0.0"></label>
-    </div>
-
-    <div class="group">
-      <h2>Synth ↔ Source Interaction</h2>
+    <!-- Synth <-> Source -->
+    <div class="section">
+      <h3>Synth ⇄ Source Interaction</h3>
       <label>Mode
-        <select id="interMode">
-          <option value="0">Off</option>
-          <option value="1">Add</option>
-          <option value="2">Multiply</option>
-          <option value="3">Ring</option>
-          <option value="4">Displace</option>
-          <option value="5">Key (Synth over)</option>
-          <option value="6">Displace + Key</option>
+        <select id="sxMode">
+          <option>Displace + Key</option>
+          <option>Key Only</option>
+          <option>Displace Only</option>
         </select>
       </label>
-      <label>Amount <input id="interAmt" type="range" min="0" max="1" step="0.001" value="0.6"></label>
-      <label>Displace (px) <input id="synDisp" type="range" min="0" max="6" step="0.01" value="0.8"></label>
+      <label>Amount <input id="sxAmt" type="range" min="0" max="1" step="0.001" value="0.8" /></label>
+      <label>Displace (px) <input id="sxDisp" type="range" min="0" max="40" step="0.1" value="12" /></label>
     </div>
 
-    <div class="group">
-      <h2>Feedback (Pre‑CRT)</h2>
-      <label>Amount <input id="fbAmt" type="range" min="0" max="0.98" step="0.001" value="0.0"></label>
-      <label>Blur (px) <input id="fbBlur" type="range" min="0" max="2.0" step="0.01" value="0.5"></label>
-      <label>Drift (px) <input id="fbDrift" type="range" min="-2.0" max="2.0" step="0.01" value="0.15"></label>
-      <label>Taps (1‑3) <input id="fbTaps" type="number" min="1" max="3" step="1" value="2"></label>
-      <label>Tap Decay <input id="fbDecay" type="range" min="0" max="1" step="0.001" value="0.6"></label>
+    <!-- Effects -->
+    <div class="section purple">
+      <h3>Effects (stack)</h3>
+      <label>Fractal <input id="fxFractal" type="checkbox" /></label>
+      <label>Plasma <input id="fxPlasma" type="checkbox" checked /></label>
+      <label>Voronoi <input id="fxVoro" type="checkbox" /></label>
+      <label>Pixel Sort <input id="fxSort" type="checkbox" /></label>
+      <label>Sort Mode
+        <select id="sortMode"><option value="lum">Luminance</option><option value="hue">Hue</option></select>
+      </label>
+      <label>Fractal Type
+        <select id="fracType"><option value="perlin">Perlin</option><option value="simplex">Simplex</option></select>
+      </label>
+      <label>Effect Scale <input id="fxScale" type="range" min="0.5" max="12" step="0.01" value="3" /></label>
+      <label>Effect Speed <input id="fxSpeed" type="range" min="0" max="4" step="0.001" value="1" /></label>
+      <label>Effect Amount <input id="fxAmt" type="range" min="0" max="1" step="0.001" value="1" /></label>
     </div>
 
-    <h2>Recording</h2>
-    <div class="row">
-      <label>Duration (s) <input id="recSecs" type="number" min="1" max="60" step="1" value="5"></label>
-    </div>
-    <div class="row">
-      <button id="recStart" class="btn" type="button">Start Recording</button>
-      <button id="recStop" class="btn" type="button" disabled>Stop</button>
-      <a id="recDownload" class="btn" style="display:none" download="crt-capture.webm">Download</a>
-    </div>
-
-    <div class="group">
-      <h2>Global Hue</h2>
-      <label>Hue Rotate (°) <input id="hueRotate" type="range" min="-180" max="180" step="0.1" value="0"></label>
+    <!-- Feedback -->
+    <div class="section">
+      <h3>Feedback (Pre-CRT)</h3>
+      <label>Amount <input id="fbAmt" type="range" min="0" max="1" step="0.001" value="0.6" /></label>
+      <label>Blur (px) <input id="fbBlur" type="range" min="0" max="8" step="0.1" value="1.0" /></label>
+      <label>Drift (px) <input id="fbDrift" type="range" min="0" max="20" step="0.1" value="6" /></label>
+      <label>Taps (1–3)
+        <select id="fbTaps"><option>1</option><option>2</option><option selected>3</option></select>
+      </label>
+      <label>Tap Decay <input id="fbDecay" type="range" min="0" max="1" step="0.001" value="0.6" /></label>
     </div>
 
-    <h2>Screen Geometry</h2>
-    <label>Rotation (°)<input id="rotation" type="range" min="-180" max="180" step="0.1" value="0"></label>
-    <label>Zoom<input id="zoom" type="range" min="0.85" max="1.5" step="0.001" value="1.02"></label>
-    <label>Aspect Ratio<input id="ratio" type="text" placeholder="4:3"></label>
+    <!-- Recording -->
+    <div class="section">
+      <h3>Recording</h3>
+      <label>Duration (s) <input id="recSecs" type="number" min="1" max="60" value="5" /></label>
+      <div class="row">
+        <button id="btnRec" class="btn">Start Recording</button>
+        <button id="btnStop" class="btn">Stop</button>
+        <a id="dl" class="btn" style="display:none" download="crt.webm">Download</a>
+      </div>
+    </div>
 
-    <h2>Phosphor & Lines</h2>
-    <label>Scanlines<input id="scan" type="range" min="0" max="1" step="0.001" value="0.7"></label>
-    <label>Shadow Mask<input id="mask" type="range" min="0" max="1" step="0.001" value="0.65"></label>
+    <!-- Global Hue -->
+    <div class="section">
+      <h3>Global Hue</h3>
+      <label>Hue Rotate (°) <input id="hueRot" type="range" min="-180" max="180" step="0.1" value="0" /></label>
+    </div>
 
-    <h2>Image</h2>
-    <label>Saturation<input id="saturation" type="range" min="0.0" max="2.0" step="0.001" value="1.05"></label>
+    <!-- Screen Geometry -->
+    <div class="section">
+      <h3>Screen Geometry</h3>
+      <label>Rotation (°) <input id="rot" type="range" min="-180" max="180" step="0.1" value="0" /></label>
+      <label>Zoom <input id="zoom" type="range" min="0.85" max="1.5" step="0.001" value="1.0" /></label>
+      <label>Aspect Ratio <input id="ratio" type="text" placeholder="4:3" /></label>
+    </div>
 
-    <h2>Artifacts</h2>
-    <label>Chromatic Aberration<input id="chroma" type="range" min="0" max="1" step="0.001" value="0.3"></label>
-    <label>Noise / Snow<input id="noise" type="range" min="0" max="1" step="0.001" value="0.25"></label>
-    <label>Flicker<input id="flicker" type="range" min="0" max="1" step="0.001" value="0.2"></label>
+    <!-- Phosphor & Lines -->
+    <div class="section red">
+      <h3>Phosphor & Lines</h3>
+      <label>Scanlines <input id="scan" type="range" min="0" max="1" step="0.001" value="0.7" /></label>
+      <label>Shadow Mask
+        <select id="mask"><option value="0">Triad</option><option value="1">Aperture</option><option value="2">Slot</option><option value="3">Dot</option></select>
+      </label>
+      <label>Mask Amount <input id="maskAmt" type="range" min="0" max="1" step="0.001" value="0.65" /></label>
+    </div>
 
-    <h2>Self‑tests</h2>
-    <div id="testlog">(running...)</div>
+    <!-- Image -->
+    <div class="section">
+      <h3>Image</h3>
+      <label>Saturation <input id="sat" type="range" min="0" max="2" step="0.001" value="1.05" /></label>
+      <label>Chromatic Ab. <input id="chroma" type="range" min="0" max="1" step="0.001" value="0.3" /></label>
+      <label>Noise <input id="noise" type="range" min="0" max="1" step="0.001" value="0.2" /></label>
+      <label>Flicker <input id="flick" type="range" min="0" max="1" step="0.001" value="0.2" /></label>
+    </div>
+
+    <!-- Mod Matrix (simplified demo routing) -->
+    <div class="section green">
+      <h3>Mod Matrix (per-osc target: Freq / Phase / Amp)</h3>
+      <div class="row small">This demo wires modulation into Effect Scale/Speed/Amount + Synth hue. Extend as needed.</div>
+      <label>Audio ➜ Effect Amount <input id="mmAudAmt" type="range" min="0" max="1" step="0.001" value="0.3" /></label>
+      <label>Osc A ➜ Effect Scale <input id="mmAScale" type="range" min="0" max="1" step="0.001" value="0.2" /></label>
+      <label>Osc B ➜ Effect Speed <input id="mmBSpeed" type="range" min="0" max="1" step="0.001" value="0.2" /></label>
+      <label>Osc C ➜ Synth Hue <input id="mmCHue" type="range" min="0" max="1" step="0.001" value="0.15" /></label>
+    </div>
+
+    <!-- Fullscreen -->
+    <div class="section">
+      <h3>Fullscreen</h3>
+      <div class="row">
+        <button id="btnFS" class="btn">Fullscreen (F)</button>
+        <span class="small">Press L to toggle Live Cycle</span>
+      </div>
+    </div>
+
+    <!-- Self-tests -->
+    <div class="section">
+      <h3>Self-tests</h3>
+      <pre id="log">(running tests…)
+</pre>
+    </div>
   </aside>
-  <div class="badge">WEBGL CRT</div>
+
   <canvas id="gl"></canvas>
 
 <script>
-(function(){'use strict';const $=id=>document.getElementById(id),C=$('gl'),UI={rot:'rotation',ratio:'ratio',zoom:'zoom',scan:'scan',mask:'mask',saturation:'saturation',chroma:'chroma',noise:'noise',flicker:'flicker'};const TL=$('testlog'),TC=$('timecode'),PP=$('playPause'),MB=$('muteBtn');const log=(s,ok=true)=>{const d=document.createElement('div');d.className=ok?'ok':'bad';d.textContent=(ok?'✔ ':'✖ ')+s;TL.appendChild(d)};const ratio=()=>{const el=$(UI.ratio);if(!el)return 0;let v=(el.value||'').trim();if(!v)return 0;if(v.includes(':')){const[a,b]=v.split(':').map(x=>parseFloat(x.replace(',','.')));return(isFinite(a)&&isFinite(b)&&b!==0)?a/b:0}const f=parseFloat(v.replace(',','.'));return(isFinite(f)&&f>0)?f:0};const num=(id,d=0)=>{const el=$(id);const v=parseFloat(el?el.value:null);return isFinite(v)?v:d};const fmt=s=>{s=Math.max(0,s|0);const m=(s/60)|0,r=s%60;return String(m).padStart(2,'0')+":"+String(r).padStart(2,'0')};let resizing=false;window.__resizeCount=0;const resize=()=>{resizing=false;const dpr=Math.min(window.devicePixelRatio||1,2),w=Math.max(2,Math.floor((C.clientWidth||(window.innerWidth-500))*dpr)),h=Math.max(2,Math.floor((C.clientHeight||window.innerHeight)*dpr));if(C.width!==w||C.height!==h){C.width=w;C.height=h;if(window.__gl)window.__gl.viewport(0,0,w,h);if(window.__allocPrev)window.__allocPrev(w,h);window.__resizeCount++}};window.scheduleResize=()=>{if(!resizing){resizing=true;requestAnimationFrame(resize)}};['fileImg','fileVid','usePattern','useSynth','playPause','muteBtn'].forEach(id=>log(`#${id} present`,!!$(id)));Object.entries(UI).forEach(([k,id])=>log(`UI "${k}" -> #${id} present`,!!$(id)));['synHue','synHueDepth','synKey','synSoft','synRotSpd','synWaveA','synWaveB','synWaveC','synAF','synAA','synBF','synBA','synCF','synCA','synShapeAmt','synShapeSize','synShapeSoft','interMode','interAmt','synDisp','fbAmt','fbBlur','fbDrift','fbTaps','fbDecay','hueRotate','abFM','bcPM','caRM','modR','modG','modB','presetSelect','presetLoad','presetSave','presetRand','audSrc','audEnable','mm_a_FA','mm_b_FB','mm_c_FC','mm_x_FA','wfSteps','wfTrap','wfExpK','lfoARate','lfoBRate','lfoCRate','shapeType','shape2Amt','pCount','kSeg'].forEach(id=>log(`Control #${id}`,!!$(id)));const rEl=$(UI.ratio),cases=[["4:3",4/3],["16:9",16/9],["1.25",1.25],["1,25",1.25],["bad",0],[" 21 : 9 ",21/9],["3:2",1.5],["9:16",9/16]];let ok=true;for(const[i,e]of cases){rEl.value=i;const g=ratio();const p=Math.abs(g-e)<1e-6;ok=ok&&p;log(`ratio("${i}") == ${e.toFixed(6)}`,p)}rEl.value='';log('getNumber fallback',num('__no',42)===42);log('Tests done',ok);
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const C=$('gl');
+let W=innerWidth-420,H=innerHeight;C.width=W;C.height=H;
 
-// Source
-const S=document.createElement('canvas'),SC=S.getContext('2d');S.width=640;S.height=360;let bmp=null;const V=document.createElement('video');V.playsInline=true;V.muted=true;V.loop=true;V.preload='metadata';let mode='pattern';const pat=t=>{const w=S.width,h=S.height;const g=SC.createLinearGradient(0,0,w,h);g.addColorStop(0,'#20263a');g.addColorStop(1,'#0f1220');SC.fillStyle=g;SC.fillRect(0,0,w,h);const bars=['#fff','#ff0','#0ff','#0f0','#f0f','#00f','#f00'];const bw=Math.floor(w/bars.length);for(let i=0;i<bars.length;i++){SC.fillStyle=bars[i];SC.fillRect(i*bw,0,bw-1,Math.floor(h*0.35))}SC.strokeStyle='rgba(255,255,255,0.08)';for(let x=0;x<w;x+=Math.floor(w/24)){SC.beginPath();SC.moveTo(x,0);SC.lineTo(x,h);SC.stroke()}for(let y=0;y<h;y+=Math.floor(h/16)){SC.beginPath();SC.moveTo(0,y);SC.lineTo(w,y);SC.stroke()}SC.strokeStyle='rgba(255,255,255,0.3)';SC.beginPath();SC.moveTo(w/2,0);SC.lineTo(w/2,h);SC.moveTo(0,h/2);SC.lineTo(w,h/2);SC.stroke();SC.font=Math.floor(h*0.08)+"px ui-monospace,Menlo";SC.fillStyle='rgba(0,0,0,0.5)';SC.fillText('CRT EMULATOR',22,h-22);const x=Math.floor((Math.sin(t*0.7)*0.5+0.5)*(w-260));SC.fillStyle='rgba(255,255,255,0.9)';SC.fillRect(x,Math.floor(h*0.55),240,Math.floor(h*0.12));SC.fillStyle='#111';SC.fillText('NO SIGNAL',x+12,Math.floor(h*0.63))};const onImg=async f=>{if(!f)return;try{bmp=await createImageBitmap(f);mode='image';S.width=bmp.width;S.height=bmp.height}catch(e){console.error(e)}};const onVid=async f=>{if(!f)return;try{mode='video';V.src=URL.createObjectURL(f);await V.play().catch(()=>{});PP.textContent='Pause';MB.textContent=V.muted?'Unmute':'Mute'}catch(e){console.error(e)}};$('fileImg').addEventListener('change',e=>onImg(e.target.files&&e.target.files[0]));$('fileVid').addEventListener('change',e=>onVid(e.target.files&&e.target.files[0]));$('usePattern').addEventListener('click',()=>mode='pattern');$('useSynth').addEventListener('click',()=>mode='synth');PP.addEventListener('click',async()=>{if(mode!=='video')return;if(V.paused){await V.play().catch(()=>{});PP.textContent='Pause'}else{V.pause();PP.textContent='Play'}});MB.addEventListener('click',()=>{if(mode!=='video')return;V.muted=!V.muted;MB.textContent=V.muted?'Unmute':'Mute'});const updTC=()=>{if(mode==='video'&&isFinite(V.duration))TC.textContent=fmt(V.currentTime)+' / '+fmt(V.duration);else TC.textContent='00:00 / 00:00'};V.addEventListener('timeupdate',updTC);if('requestVideoFrameCallback'in V){V.requestVideoFrameCallback(function cb(){updTC();V.requestVideoFrameCallback(cb)})}
+const TL=$('log');const log=(s,ok)=>{TL.textContent+=(ok===undefined?'':(ok?'✔ ':'✖ '))+s+'\\n'};
+const ratio=()=>{let v=($('ratio').value||'').trim();if(!v)return 0;if(v.includes(':')){const[a,b]=v.split(':').map(x=>parseFloat(x.replace(',','.')));return(isFinite(a)&&isFinite(b)&&b!==0)?a/b:0}const f=parseFloat(v.replace(',','.'));return(isFinite(f)&&f>0)?f:0};
+
+// Sources
+const SRC_CAN=document.createElement('canvas'),SRC_CTX=SRC_CAN.getContext('2d');
+SRC_CAN.width=640;SRC_CAN.height=360;let bmp=null;const VID=document.createElement('video');
+VID.playsInline=true;VID.muted=true;VID.loop=true;VID.preload='metadata';
+let sourceMode='synth'; // 'image' | 'video' | 'pattern' | 'synth'
+const pattern=(t)=>{const w=SRC_CAN.width,h=SRC_CAN.height;SRC_CTX.fillStyle='#101525';SRC_CTX.fillRect(0,0,w,h);
+const bars=['#fff','#ff0','#0ff','#0f0','#f0f','#00f','#f00'];const bw=Math.floor(w/bars.length);
+for(let i=0;i<bars.length;i++){SRC_CTX.fillStyle=bars[i];SRC_CTX.fillRect(i*bw,0,bw-1,Math.floor(h*0.35))}
+SRC_CTX.strokeStyle='rgba(255,255,255,0.1)';for(let x=0;x<w;x+=Math.floor(w/24)){SRC_CTX.beginPath();SRC_CTX.moveTo(x,0);SRC_CTX.lineTo(x,h);SRC_CTX.stroke()}
+SRC_CTX.font=Math.floor(h*0.08)+'px ui-monospace,Menlo';SRC_CTX.fillStyle='#fff';SRC_CTX.fillText('TEST PATTERN',18,h-22)};
+
+$('btnImg').onclick=()=>$('fileImg').click();
+$('btnVid').onclick=()=>$('fileVid').click();
+$('btnTP').onclick=()=>{sourceMode='pattern'};
+$('btnSynth').onclick=()=>{sourceMode='synth'};
+
+$('fileImg').addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0];if(!f) return;
+  try{bmp=await createImageBitmap(f);sourceMode='image';SRC_CAN.width=bmp.width;SRC_CAN.height=bmp.height}catch(err){log('image load: '+err,false)}
+});
+$('fileVid').addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0];if(!f) return;
+  try{sourceMode='video';VID.src=URL.createObjectURL(f);await VID.play().catch(()=>{});$('btnPlay').textContent='Pause'}catch(err){log('video load: '+err,false)}
+});
+
+$('btnPlay').onclick=async()=>{
+  if(sourceMode!=='video')return;
+  if(VID.paused){await VID.play().catch(()=>{});$('btnPlay').textContent='Pause'} else {VID.pause();$('btnPlay').textContent='Play'}
+};
+$('btnMute').onclick=()=>{if(sourceMode!=='video')return;VID.muted=!VID.muted;$('btnMute').textContent=VID.muted?'Unmute':'Mute'};
+
+const fmt=s=>{s=Math.max(0,s|0);const m=(s/60)|0,r=s%60;return String(m).padStart(2,'0')+':'+String(r).padStart(2,'0')};
+const updTC=()=>{if(sourceMode==='video'&&isFinite(VID.duration))$('time').textContent=fmt(VID.currentTime)+' / '+fmt(VID.duration);else $('time').textContent='00:00 / 00:00'};
+VID.addEventListener('timeupdate',updTC);
+if('requestVideoFrameCallback'in VID){VID.requestVideoFrameCallback(function cb(){updTC();VID.requestVideoFrameCallback(cb)})}
 
 // WebGL
-const gl=C.getContext('webgl',{alpha:false,antialias:false,preserveDrawingBuffer:true});if(!gl){TL.textContent+='WebGL not supported.';return}window.__gl=gl;const makeTex=(w,h)=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);return t};let prev=[makeTex(C.width,C.height),makeTex(C.width,C.height),makeTex(C.width,C.height)],pi=0;window.__allocPrev=(w,h)=>{for(let i=0;i<prev.length;i++){if(prev[i])gl.deleteTexture(prev[i]);prev[i]=makeTex(w,h)}gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);for(let i=0;i<prev.length;i++){gl.bindTexture(gl.TEXTURE_2D,prev[i]);gl.copyTexImage2D(gl.TEXTURE_2D,0,gl.RGBA,0,0,w,h,0)}};const vs=`attribute vec2 a;varying vec2 v;void main(){v=(a+1.0)*0.5;gl_Position=vec4(a,0.,1.);} `;const fs=`precision mediump float;varying vec2 v;uniform float u_time;uniform vec2 u_res;uniform sampler2D u_src,u_p1,u_p2,u_p3;uniform float u_source;uniform float u_rot,u_ratio,u_zoom,u_scan,u_mask,u_sat,u_ca,u_noise,u_flick;uniform float u_hue;uniform float u_synHue,u_synHueDepth,u_synKey,u_synSoft,u_synRot;uniform float u_fA,u_fB,u_fC,u_aA,u_aB,u_aC,u_angA,u_angB,u_angC;uniform float u_wA,u_wB,u_wC;uniform float u_wfSteps,u_wfTrap,u_wfExpK;uniform float u_lfoAR,u_lfoBR,u_lfoCR,u_lfoAF,u_lfoAP,u_lfoAA,u_lfoBF,u_lfoBP,u_lfoBA,u_lfoCF,u_lfoCP,u_lfoCA;uniform float u_shapeAmt,u_shapeSize,u_shapeSoft;uniform float u_shape2Amt,u_shape2Size,u_shape2Soft,u_shape2Rot,u_shapeType,u_shapeSides;uniform float u_abFM,u_bcPM,u_caRM;uniform float u_modR,u_modG,u_modB;uniform float u_interMode,u_interAmt,u_synDisp;uniform float u_fbAmt,u_fbBlur,u_fbDrift,u_fbTaps,u_fbDecay;uniform vec3 u_audio;uniform mat3 u_mmF;uniform mat3 u_mmP;uniform mat3 u_mmA;uniform float u_kSeg,u_kRot;uniform float u_pCount,u_pSize,u_pSpeed,u_pReact,u_pLink;float PI=3.14159265;float H(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}mat3 hueM(float a){float U=cos(a),W=sin(a);mat3 m=mat3(0.299,0.587,0.114,0.299,0.587,0.114,0.299,0.587,0.114);mat3 r=mat3(0.701,-0.587,-0.114,-0.299,0.413,-0.114,-0.3,-0.588,0.886);return m+r*U+mat3(0.168,0.330,-0.497,-0.328,0.035,0.292,1.25,-1.05,-0.203)*W;}vec3 lin(vec3 c){return pow(c,vec3(2.2));}vec3 srg(vec3 c){return pow(c,vec3(1.0/2.2));}vec3 sat(vec3 c,float s){float l=dot(c,vec3(0.2126,0.7152,0.0722));return mix(vec3(l),c,s);}vec2 crop(vec2 uv){if(u_ratio<=0.)return uv;float outR=u_res.x/u_res.y,t=u_ratio;vec2 c=uv-0.5;if(outR>t){c.x*=outR/t;}else{c.y*=t/outR;}return c+0.5;}vec2 kalei(vec2 uv,float seg,float rot){if(seg<=1.)return uv;vec2 p=uv-0.5;float r=length(p);float a=atan(p.y,p.x)+radians(rot);float s=2.*PI/seg;float aa=mod(a,s);aa=min(aa,s-aa);vec2 q=vec2(cos(aa),sin(aa))*r;return q+0.5;}float wave(float x,float t){if(t<.5)return sin(6.2831853*x);else if(t<1.5)return fract(x)*2.-1.;else if(t<2.5)return sign(sin(6.2831853*x));else if(t<3.5){float f=fract(x);return abs(f*2.-1.)*2.-1.;}else if(t<4.5){return H(vec2(floor(x*437.),0.));}else if(t<5.5){float k=max(1.,u_wfSteps);return floor(fract(x)*k)/ (k-1.); }else if(t<6.5){float tri=1.0-abs(fract(x)*2.0-1.0);float plateau=clamp((tri-u_wfTrap)/(1.0-u_wfTrap+1e-5),0.0,1.0);return plateau*2.0-1.0;}else{float k=u_wfExpK;float f=fract(x);float y=(exp(k*f)-1.)/(exp(k)-1.);return y*2.-1.;}}
-float oRaw(vec2 uv,float f,float aDeg,float rot){float a=radians(aDeg)+radians(rot)*u_time;vec2 d=vec2(cos(a),sin(a));return dot(uv-0.5,d)*f+u_time*0.1*f;}
-float LFO(float rate){return sin(6.2831853*u_time*rate);}struct SOut{float a;float b;float c;float v;vec3 col;};
-float shapeField(vec2 uv){if(u_shapeType<0.5)return 0.;vec2 p=uv-0.5;float a=atan(p.y,p.x)+radians(u_shape2Rot)*u_time;float r=length(p);if(u_shapeType<1.5){return smoothstep(u_shape2Size,u_shape2Size-max(1e-4,u_shape2Soft),r);}else if(u_shapeType<2.5){float s=max(3.,u_shapeSides);float ang=2.*PI/s;float m=cos(mod(a,ang)-ang*0.5)/cos(ang*0.5);return smoothstep(u_shape2Size,u_shape2Size-max(1e-4,u_shape2Soft),r*m);}else{float turns=max(1.,u_shapeSides);float rr=r - (0.02*turns*a);return smoothstep(u_shape2Size,u_shape2Size-max(1e-4,u_shape2Soft),abs(rr));}}
-
-SOut synth(vec2 uv,float px){
-  // freq with MM + LFO
-  float fA=u_fA*(1.+u_mmF[0][0]*wave(oRaw(uv,u_fA,u_angA,u_synRot),u_wA)+u_mmF[1][0]*wave(oRaw(uv,u_fB,u_angB,u_synRot),u_wB)+u_mmF[2][0]*wave(oRaw(uv,u_fC,u_angC,u_synRot),u_wC));
-  float fB=u_fB*(1.+u_mmF[0][1]*wave(oRaw(uv,u_fA,u_angA,u_synRot),u_wA)+u_mmF[1][1]*wave(oRaw(uv,u_fB,u_angB,u_synRot),u_wB)+u_mmF[2][1]*wave(oRaw(uv,u_fC,u_angC,u_synRot),u_wC));
-  float fC=u_fC*(1.+u_mmF[0][2]*wave(oRaw(uv,u_fA,u_angA,u_synRot),u_wA)+u_mmF[1][2]*wave(oRaw(uv,u_fB,u_angB,u_synRot),u_wB)+u_mmF[2][2]*wave(oRaw(uv,u_fC,u_angC,u_synRot),u_wC));
-  fA *= (1.0 + u_lfoAF*LFO(u_lfoAR)); fB *= (1.0 + u_lfoBF*LFO(u_lfoBR)); fC *= (1.0 + u_lfoCF*LFO(u_lfoCR));
-  float phA=oRaw(uv,fA,u_angA,u_synRot),phB=oRaw(uv,fB,u_angB,u_synRot),phC=oRaw(uv,fC,u_angC,u_synRot);
-  phA += (u_mmP[0][0]*wave(phA,u_wA)+u_mmP[1][0]*wave(phB,u_wB)+u_mmP[2][0]*wave(phC,u_wC)) + u_lfoAP*LFO(u_lfoAR);
-  phB += (u_mmP[0][1]*wave(phA,u_wA)+u_mmP[1][1]*wave(phB,u_wB)+u_mmP[2][1]*wave(phC,u_wC)) + u_lfoBP*LFO(u_lfoBR);
-  phC += (u_mmP[0][2]*wave(phA,u_wA)+u_mmP[1][2]*wave(phB,u_wB)+u_mmP[2][2]*wave(phC,u_wC)) + u_lfoCP*LFO(u_lfoCR);
-  float a=wave(phA,u_wA),b=wave(phB,u_wB),c=wave(phC,u_wC);
-  float ampA=1.+(u_mmA[0][0]*a+u_mmA[1][0]*b+u_mmA[2][0]*c)+u_lfoAA*LFO(u_lfoAR);
-  float ampB=1.+(u_mmA[0][1]*a+u_mmA[1][1]*b+u_mmA[2][1]*c)+u_lfoBA*LFO(u_lfoBR);
-  float ampC=1.+(u_mmA[0][2]*a+u_mmA[1][2]*b+u_mmA[2][2]*c)+u_lfoCA*LFO(u_lfoCR);
-  a*=ampA; b*=ampB; c*=ampC;
-  float ring=a*b*c; float add=(a+b+c)/3.; float v=mix(add,ring,clamp(u_caRM,0.,1.)); v=0.5+0.5*v;
-  // original circle mask
-  float d=length((uv-0.5)*vec2(u_res.x/u_res.y,1.)); float circle=smoothstep(u_shapeSize,u_shapeSize-max(1e-4,u_shapeSoft),d); v=mix(v,0.,clamp(u_shapeAmt,0.,1.)*circle);
-  // new shape osc
-  float s2=shapeField(uv); v=mix(v, 0.0, clamp(u_shape2Amt,0.0,1.0)*s2);
-  vec3 col=mix(vec3(v),vec3(.5+.5*sin(6.2831*(v+u_synHue)),.5+.5*sin(6.2831*(v+u_synHue+.33)),.5+.5*sin(6.2831*(v+u_synHue+.66))),clamp(u_synHueDepth,0.,1.5));
-  SOut o; o.a=a;o.b=b;o.c=c;o.v=v;o.col=col;return o;}
-
-vec3 sample(vec2 uv,float px){vec3 c=texture2D(u_src,uv).rgb;vec3 b=.44*c+.22*texture2D(u_src,uv+vec2(0.,px)).rgb+.22*texture2D(u_src,uv-vec2(0.,px)).rgb+.06*texture2D(u_src,uv+vec2(0.,2.*px)).rgb+.06*texture2D(u_src,uv-vec2(0.,2.*px)).rgb;return b;}
-vec3 perChan(vec3 c,SOut S){float R=.5+.5*S.a,G=.5+.5*S.b,B=.5+.5*S.c;c.r*=mix(1.,R*2.,u_modR);c.g*=mix(1.,G*2.,u_modG);c.b*=mix(1.,B*2.,u_modB);return clamp(c,0.,1.);} 
-
-float luminance(vec3 c){return dot(c,vec3(0.2126,0.7152,0.0722));}
-vec3 particles(vec2 uv, vec3 base, float px){
-  float N=u_pCount; if(N<0.5) return vec3(0.);
-  vec3 acc=vec3(0.);
-  for(int i=0;i<64;i++){
-    if(float(i)>=N) break;
-    float id=float(i);
-    float s=H(vec2(id,3.7));
-    float t=u_time*u_pSpeed*(0.2+0.8*H(vec2(id,7.3)));
-    vec2 seed=vec2(H(vec2(id,1.1)),H(vec2(id,2.2)));
-    vec2 p=fract(seed+vec2(t, t*H(vec2(id,5.5))));
-    // react to source: sample nearby luminance and bias toward bright areas
-    float li=luminance(base);
-    p=mix(p,uv, clamp(u_pReact*li,0.0,1.0));
-    float d=length(uv-p);
-    float size=px*u_pSize*(0.5+1.5*H(vec2(id,9.9)));
-    float dotv=exp(-d*d/(size*size));
-    vec3 col = vec3(H(vec2(id,0.33)),H(vec2(id,0.66)),H(vec2(id,0.99)));
-    acc += col*dotv;
-    // optional linking
-    if(u_pLink>0.5){
-      vec2 p2=fract(seed+vec2(t*1.1, t*0.9));
-      float d2=length(uv-(p+p2)*0.5);
-      float line=exp(-d2*d2/(4.0*size*size))*0.4;
-      acc += vec3(line);
-    }
-  }
-  return acc;
-}
-
+const gl=C.getContext('webgl',{alpha:false,antialias:false,preserveDrawingBuffer:true});
+if(!gl){TL.textContent+='WebGL not supported';return}
+const VERT=`
+attribute vec2 a;varying vec2 v;
+void main(){v=(a+1.0)*0.5;gl_Position=vec4(a,0.,1.);}
+`;
+const FRAG=`
+precision mediump float;varying vec2 v;
+uniform vec2 u_res;uniform float u_time;
+uniform sampler2D u_src;
+uniform vec4 u_fx;uniform int u_maskType;uniform float u_maskAmt,u_scan,u_sat,u_ca,u_noise,u_flick,u_hue,u_rot,u_zoom,u_ratio,u_fxScale,u_fxSpeed,u_fxAmt;
+uniform int u_sortHue;
+mat3 hueM(float a){float U=cos(a),W=sin(a);
+mat3 m=mat3(0.299,0.587,0.114,0.299,0.587,0.114,0.299,0.587,0.114);
+return m+mat3(0.701,-0.587,-0.114,-0.299,0.413,-0.114,-0.3,-0.588,0.886)*U
++mat3(0.168,0.330,-0.497,-0.328,0.035,0.292,1.25,-1.05,-0.203)*W;}
+float H(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float N(vec2 p){vec2 i=floor(p),f=fract(p);float a=H(i),b=H(i+vec2(1.,0.)),c=H(i+vec2(0.,1.)),d=H(i+vec2(1.,1.));vec2 u=f*f*(3.-2.*f);
+return mix(a,b,u.x)+(c-a)*u.y*(1.-u.x)+(d-b)*u.x*u.y;}
+float fbm(vec2 p){float n=0.,a=1.;for(int i=0;i<5;i++){n+=N(p*a)/a;a*=2.;}return n;}
+vec2 crop(vec2 uv){if(u_ratio<=0.)return uv;float outR=u_res.x/u_res.y,t=u_ratio;vec2 c=uv-0.5;if(outR>t)c.x*=outR/t;else c.y*=t/outR;return c+0.5;}
+vec2 rot(vec2 uv,float a){vec2 p=uv-0.5;float s=sin(a),c=cos(a);return mat2(c,-s,s,c)*p+0.5;}
+vec3 maskFX(vec2 uv,int m,float k){float stripe=fract(uv.x*u_res.x/3.);vec3 tri=stripe<1./3.?vec3(1,0.7,0.7):((stripe<2./3.)?vec3(0.7,1,0.7):vec3(0.7,0.7,1));
+if(m==1){float s=fract(uv.x*2.);tri=mix(vec3(1),vec3(1,1,0),step(0.5,s));}
+else if(m==2){float s=fract(uv.x*2.);tri=mix(vec3(1),vec3(0.9,1,0.9),step(0.5,s));}
+else if(m==3){float d=fract(uv.x*4.);tri=mix(vec3(1),vec3(1,0.9,1),step(0.25,d));}
+return mix(vec3(1),tri,clamp(k,0.,1.));}
+vec3 plasma(vec2 uv){return 0.5+0.5*cos(u_time+uv.xyx*vec3(1,1.3,1.7));}
+vec3 voro(vec2 uv){vec2 g=floor(uv),f=fract(uv);float md=1.;for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){vec2 o=vec2(float(x),float(y));vec2 rp=g+o+H(g+o);float d=length(f-o-rp);md=min(md,d);}return vec3(md);}
+float lum(vec3 c){return dot(c,vec3(0.2126,0.7152,0.0722));}
+vec3 psamp(vec2 uv){float stepPx=1.0/u_res.x;vec3 a=texture2D(u_src,uv).rgb;vec3 b=texture2D(u_src,uv+vec2(stepPx,0.)).rgb;
+float la=u_sortHue==1?atan(a.g*1.732,a.b-a.r):lum(a);
+float lb=u_sortHue==1?atan(b.g*1.732,b.b-b.r):lum(b);
+return la<lb?a:b;}
 void main(){
-  vec2 uv=v; uv=crop(uv); if(u_kSeg>1.0) uv=kalei(uv,u_kSeg,u_kRot);
-  if(abs(u_rot)>.0001){vec2 p=uv-.5;float s=sin(u_rot),c=cos(u_rot);uv=mat2(c,-s,s,c)*p+.5;}
-  uv=(uv-.5)/u_zoom+.5; if(any(lessThan(uv,vec2(0.)))||any(greaterThan(uv,vec2(1.)))){gl_FragColor=vec4(0,0,0,1);return;}
-  float px=1./u_res.y; SOut S=synth(uv,px);
-  vec2 uvD=uv; if(u_interMode>3.5&&u_interMode<6.5){vec2 disp=(S.col.rg-.5)*(u_synDisp/u_res);uvD+=disp;}
-  vec3 src=(u_source<.5)?sample(uvD,px):S.col; // source
-  if(u_source<.5){vec3 m=src; if(u_interMode>.5&&u_interMode<1.5)m=clamp(src+(S.col-.5),0.,1.); else if(u_interMode<2.5&&u_interMode>1.5)m=src*(.5+S.col); else if(u_interMode<3.5&&u_interMode>2.5)m=.5+.5*(src*(S.col*2.-1.)); else if(u_interMode<5.5&&u_interMode>4.5){float a=smoothstep(u_synKey,u_synKey+max(1e-4,u_synSoft),S.v);m=mix(src,S.col,a);} else if(u_interMode>5.5&&u_interMode<6.5){float a=smoothstep(u_synKey,u_synKey+max(1e-4,u_synSoft),S.v);m=mix(src,S.col,a);} src=mix(src,m,clamp(u_interAmt,0.,1.));} else {float a=smoothstep(u_synKey,u_synKey+max(1e-4,u_synSoft),S.v); src=mix(src,S.col,clamp(u_interAmt*a,0.,1.));}
-  src=perChan(src,S);
-  // particles on top of mixed src
-  vec3 part = particles(uv, src, px);
-
-  // === Pre‑CRT multi‑tap feedback ===
-  if(u_fbAmt>.0001){vec2 d=vec2(u_fbDrift/u_res.x,u_fbDrift/u_res.y);vec3 acc=vec3(0.);float taps=clamp(u_fbTaps,1.,3.),w=1.,norm=0.,dec=clamp(u_fbDecay,0.,1.);for(int i=1;i<=3;i++){if(float(i)>taps)break;vec3 pf=(i==1)?texture2D(u_p1,uv+d*float(i)).rgb:((i==2)?texture2D(u_p2,uv+d*float(i)).rgb:texture2D(u_p3,uv+d*float(i)).rgb);if(u_fbBlur>.0001){vec3 p0=pf,p1=(i==1)?texture2D(u_p1,uv+d*float(i)+vec2(0.,px*u_fbBlur)).rgb:((i==2)?texture2D(u_p2,uv+d*float(i)+vec2(0.,px*u_fbBlur)).rgb:texture2D(u_p3,uv+d*float(i)+vec2(0.,px*u_fbBlur)).rgb);vec3 p2=(i==1)?texture2D(u_p1,uv+d*float(i)-vec2(0.,px*u_fbBlur)).rgb:((i==2)?texture2D(u_p2,uv+d*float(i)-vec2(0.,px*u_fbBlur)).rgb:texture2D(u_p3,uv+d*float(i)-vec2(0.,px*u_fbBlur)).rgb);pf=(p0*.5+p1*.25+p2*.25);}acc+=pf*w;norm+=w;w*=dec;}if(norm>0.)acc/=norm;src=clamp(src+acc*u_fbAmt,0.,1.);} 
-
-  // Global hue before CRT
-  src = clamp(hueM(radians(u_hue))*src,0.,1.);
-
-  // Chromatic aberration for image/video
-  vec3 c=src; if(u_source<.5){vec2 dir=(uv-.5);float ca=(u_ca*0.004);vec2 off=ca*normalize(dir+1e-5);c.r=texture2D(u_src,uvD+off).r;c.g=src.g;c.b=texture2D(u_src,uvD-off).b;}
-
-  // Overlay particles
-  c = clamp(c + part, 0.0, 1.0);
-
-  // CRT phosphor & noise
-  c=lin(c); c=sat(c,u_sat); float sc=sin(uv.y*u_res.y*3.14159); c*=mix(1.,0.6+0.4*sc,u_scan); float stripe=fract(uv.x*u_res.x/3.); vec3 mask=vec3(stripe<1./3.?1.:0.7,(stripe>=1./3.&&stripe<2./3.)?1.:0.7,stripe>=2./3.?1.:0.7); c*=mix(vec3(1.),mask,u_mask); float n=H(vec2(floor(uv.x*u_res.x),floor(uv.y*u_res.y))+u_time); c*=1.+(u_flick*(sin(u_time*120.)*.03)); c+=(n-.5)*.12*u_noise; gl_FragColor=vec4(srg(max(c,0.)),1.);
+  vec2 uv=crop(v); uv=rot(uv,radians(u_rot)); uv=(uv-0.5)/u_zoom+0.5;
+  if(any(lessThan(uv,vec2(0.)))||any(greaterThan(uv,vec2(1.)))){gl_FragColor=vec4(0,0,0,1);return;}
+  vec3 col=texture2D(u_src,uv).rgb;
+  if(u_fx.x>0.5){float f=fbm(uv*u_fxScale+u_time*u_fxSpeed);col=mix(col,vec3(f),u_fxAmt);}
+  if(u_fx.y>0.5){vec3 p=plasma(uv*u_fxScale);col=mix(col,p,u_fxAmt);}
+  if(u_fx.z>0.5){vec3 v=voro(uv*u_fxScale);col=mix(col,v,u_fxAmt);}
+  if(u_fx.w>0.5){vec3 s=psamp(uv);col=mix(col,s,u_fxAmt);}
+  vec2 dir=(uv-0.5);float ca=u_ca*0.004;vec2 off=ca*normalize(dir+1e-5);
+  vec3 caCol=vec3(texture2D(u_src,uv+off).r,col.g,texture2D(u_src,uv-off).b);
+  col=mix(col,caCol,clamp(u_ca,0.,1.));
+  float sc=sin(uv.y*u_res.y*3.14159);col*=mix(1.,0.6+0.4*sc,u_scan);
+  col*=maskFX(uv,u_maskType,u_maskAmt);
+  float L=lum(col);col=mix(vec3(L),col,clamp(u_sat,0.,2.));
+  float n=H(floor(uv*u_res)+u_time);col*=1.+(u_flick*(sin(u_time*120.)*.03));
+  col+=(n-.5)*.12*u_noise;
+  col=clamp(hueM(radians(u_hue))*col,0.,1.);
+  gl_FragColor=vec4(col,1.);
 }
-`;const comp=(t,s,tag)=>{const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);const ok=gl.getShaderParameter(sh,gl.COMPILE_STATUS);log(`GLSL compile ${tag||''}`,ok);if(!ok)throw new Error(gl.getShaderInfoLog(sh)||'shader error');return sh};const prog=(()=>{try{const p=gl.createProgram();gl.attachShader(p,comp(gl.VERTEX_SHADER,vs,'VS'));gl.attachShader(p,comp(gl.FRAGMENT_SHADER,fs,'FS'));gl.linkProgram(p);const ok=gl.getProgramParameter(p,gl.LINK_STATUS);log('GLSL link',ok);if(!ok)throw new Error(gl.getProgramInfoLog(p)||'link error');return p}catch(e){log('GLSL error: '+(e.message||e),false);throw e}})();gl.useProgram(prog);const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);const loc=gl.getAttribLocation(prog,'a');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
-const srcT=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,srcT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
-const U=n=>gl.getUniformLocation(prog,n);const u={time:U('u_time'),res:U('u_res'),src:U('u_src'),p1:U('u_p1'),p2:U('u_p2'),p3:U('u_p3'),srcmode:U('u_source'),rot:U('u_rot'),ratio:U('u_ratio'),zoom:U('u_zoom'),scan:U('u_scan'),mask:U('u_mask'),sat:U('u_sat'),ca:U('u_ca'),noise:U('u_noise'),flick:U('u_flick'),hue:U('u_hue'),synHue:U('u_synHue'),synHueDepth:U('u_synHueDepth'),synKey:U('u_synKey'),synSoft:U('u_synSoft'),synRot:U('u_synRot'),fA:U('u_fA'),fB:U('u_fB'),fC:U('u_fC'),angA:U('u_angA'),angB:U('u_angB'),angC:U('u_angC'),wA:U('u_wA'),wB:U('u_wB'),wC:U('u_wC'),wfSteps:U('u_wfSteps'),wfTrap:U('u_wfTrap'),wfExpK:U('u_wfExpK'),lfoAR:U('u_lfoAR'),lfoBR:U('u_lfoBR'),lfoCR:U('u_lfoCR'),lfoAF:U('u_lfoAF'),lfoAP:U('u_lfoAP'),lfoAA:U('u_lfoAA'),lfoBF:U('u_lfoBF'),lfoBP:U('u_lfoBP'),lfoBA:U('u_lfoBA'),lfoCF:U('u_lfoCF'),lfoCP:U('u_lfoCP'),lfoCA:U('u_lfoCA'),shapeAmt:U('u_shapeAmt'),shapeSize:U('u_shapeSize'),shapeSoft:U('u_shapeSoft'),shape2Amt:U('u_shape2Amt'),shape2Size:U('u_shape2Size'),shape2Soft:U('u_shape2Soft'),shape2Rot:U('u_shape2Rot'),shapeType:U('u_shapeType'),shapeSides:U('u_shapeSides'),abFM:U('u_abFM'),bcPM:U('u_bcPM'),caRM:U('u_caRM'),modR:U('u_modR'),modG:U('u_modG'),modB:U('u_modB'),interMode:U('u_interMode'),interAmt:U('u_interAmt'),synDisp:U('u_synDisp'),fbAmt:U('u_fbAmt'),fbBlur:U('u_fbBlur'),fbDrift:U('u_fbDrift'),fbTaps:U('u_fbTaps'),fbDecay:U('u_fbDecay'),audio:U('u_audio'),mmF:U('u_mmF'),mmP:U('u_mmP'),mmA:U('u_mmA'),kSeg:U('u_kSeg'),kRot:U('u_kRot'),pCount:U('u_pCount'),pSize:U('u_pSize'),pSpeed:U('u_pSpeed'),pReact:U('u_pReact'),pLink:U('u_pLink')};gl.uniform1i(u.src,0);gl.uniform1i(u.p1,1);gl.uniform1i(u.p2,2);gl.uniform1i(u.p3,3);
+`;
+function sh(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw gl.getShaderInfoLog(s);return s}
+const prog=gl.createProgram();gl.attachShader(prog,sh(gl.VERTEX_SHADER,VERT));gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FRAG));gl.linkProgram(prog);
+if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw gl.getProgramInfoLog(prog);gl.useProgram(prog);
+const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+const a=gl.getAttribLocation(prog,'a');gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
+const U=n=>gl.getUniformLocation(prog,n),u={
+  res:U('u_res'),time:U('u_time'),src:U('u_src'),fx:U('u_fx'),maskType:U('u_maskType'),
+  maskAmt:U('u_maskAmt'),scan:U('u_scan'),sat:U('u_sat'),ca:U('u_ca'),noise:U('u_noise'),flick:U('u_flick'),
+  hue:U('u_hue'),rot:U('u_rot'),zoom:U('u_zoom'),ratio:U('u_ratio'),fxScale:U('u_fxScale'),
+  fxSpeed:U('u_fxSpeed'),fxAmt:U('u_fxAmt'),sortHue:U('u_sortHue')
+};
+const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+gl.uniform1i(u.src,0);
 
-// Audio reactive
-let ac,an,srcNode,micStream;let aLow=0,aMid=0,aHi=0;const audSrc=$('audSrc'),audBtn=$('audEnable'),audOut=$('audReadout');function setupAC(){if(ac)return;const AC=window.AudioContext||window.webkitAudioContext;ac=new AC();an=ac.createAnalyser();an.fftSize=1024;an.smoothingTimeConstant=0.8;const buf=new Uint8Array(an.frequencyBinCount);const tick=()=>{if(an){an.getByteFrequencyData(buf);const n=buf.length;const L=n*0.1|0,M=n*0.4|0;let l=0,m=0,h=0;for(let i=0;i<n;i++){const v=buf[i]/255; if(i<L)l+=v; else if(i<M)m+=v; else h+=v;}aLow=l/Math.max(1,L);aMid=m/Math.max(1,M-L);aHi=h/Math.max(1,n-M);audOut.textContent=`low:${aLow.toFixed(2)} mid:${aMid.toFixed(2)} hi:${aHi.toFixed(2)}`;}requestAnimationFrame(tick)};tick()}audBtn.addEventListener('click',async()=>{try{setupAC();micStream=await navigator.mediaDevices.getUserMedia({audio:true});const mic=ac.createMediaStreamSource(micStream);mic.connect(an);audSrc.value='mic';}catch(e){alert('Microphone access denied.')}});audSrc.addEventListener('change',()=>{if(!ac)return; if(srcNode){try{srcNode.disconnect()}catch{} srcNode=null;}if(audSrc.value==='video'){try{srcNode=ac.createMediaElementSource(V);srcNode.connect(an);srcNode.connect(ac.destination);}catch(e){console.warn('video audio attach failed',e)}}});
+// Presets (quick)
+const applyPreset = (name)=>{
+  const set=(id,val)=>{$(id).value=val};
+  const on=(id,val)=>{$(id).checked=!!val};
+  if(name==='Minimal CRT'){on('fxFractal',0);on('fxPlasma',0);on('fxVoro',0);on('fxSort',0);set('scan',0.6);set('mask','0');set('maskAmt',0.5);set('sat',1.0);set('chroma',0.15);set('noise',0.1);set('flick',0.1)}
+  if(name==='Liquid Plasma'){on('fxPlasma',1);on('fxFractal',0);on('fxVoro',0);on('fxSort',0);set('fxScale',3);set('fxSpeed',1.2);set('fxAmt',0.9);set('mask','1');set('maskAmt',0.7)}
+  if(name==='Cellular Drift'){on('fxPlasma',0);on('fxFractal',0);on('fxVoro',1);on('fxSort',0);set('fxScale',6);set('fxSpeed',0.6);set('fxAmt',1.0);set('scan',0.75)}
+  if(name==='Pixel Glow'){on('fxSort',1);set('sortMode','lum');set('fxAmt',0.8);set('mask','2');set('maskAmt',0.65)}
+  if(name==='Retro Arcade'){set('mask','0');set('sat',1.3);set('scan',0.85);set('noise',0.15)}
+  if(name==='Calm Geometry'){on('fxPlasma',1);set('fxAmt',0.3);set('scan',0.4);set('sat',0.9)}
+  if(name==='Ghost Trails'){set('noise',0.35);set('flick',0.25);set('sat',0.9)}
+};
+$('btnLoad').onclick=()=>{const p=$('preset').value;if(p)applyPreset(p)};
+$('btnRand').onclick=()=>{['fxFractal','fxPlasma','fxVoro','fxSort'].forEach(id=>$(id).checked=Math.random()<.5);['fxScale','fxSpeed','fxAmt','maskAmt','scan','sat','chroma','noise','flick'].forEach(id=>$(id).value=(Math.random()*parseFloat($(id).max||1)).toFixed(2))};
 
-// Presets
-const CONTROL_IDS=['synHue','synHueDepth','synKey','synSoft','synRotSpd','synWaveA','synWaveB','synWaveC','synAF','synAA','synBF','synBA','synCF','synCA','synShapeAmt','synShapeSize','synShapeSoft','interMode','interAmt','synDisp','fbAmt','fbBlur','fbDrift','fbTaps','fbDecay','hueRotate','abFM','bcPM','caRM','modR','modG','modB','rotation','zoom','ratio','scan','mask','saturation','chroma','noise','flicker','audSrc'];const P=$('presetSelect');const LOAD=$('presetLoad'),SAVE=$('presetSave'),RAND=$('presetRand');const getState=()=>{const s={};for(const id of CONTROL_IDS){const el=$(id);if(!el)continue;s[id]= (el.tagName==='SELECT')? el.value : el.value;}return s};const setState=s=>{for(const[k,v]of Object.entries(s)){const el=$(k);if(!el)continue;el.value=v}};const presets={"Nebula Trails":()=>{setState({...getState(),synAF:8,synBF:5,synCF:3,fbAmt:0.8,fbTaps:3,fbDecay:0.7,fbBlur:1.2,interMode:4,interAmt:0.8,synDisp:2.2,saturation:1.2,mask:0.7,scan:0.8,modR:0.6,modG:0.4,modB:0.2})},"Kaleido Drift":()=>{setState({...getState(),kSeg:6,kRot:15,synWaveA:3,synWaveB:7,synWaveC:6,synAF:10,synBF:10,synCF:10,synAA:45,synBA:135,synCA:-45,interMode:3,interAmt:0.7,fbAmt:0.6,fbTaps:2,fbDecay:0.6})},"RGB Tear":()=>{setState({...getState(),chroma:0.8,interMode:1,interAmt:0.9,modR:1,modG:0.2,modB:0.2,fbAmt:0.3})},"Soft Scan":()=>{setState({...getState(),scan:0.9,mask:0.3,saturation:0.9,fbAmt:0.0})}};LOAD.addEventListener('click',()=>{const n=P.value;if(presets[n])presets[n]()});SAVE.addEventListener('click',()=>{const s=getState();localStorage.setItem('crt_synth_snapshot',JSON.stringify(s));log('Snapshot saved ✓')});RAND.addEventListener('click',()=>{const rnd=(id,min,max)=>{const el=$(id);if(!el)return;const st=parseFloat(min),en=parseFloat(max);const v=(st+(en-st)*Math.random()).toFixed(el.step?String(el.step).split('.').pop()?.length||2:2);el.value=v};['synAF','synBF','synCF'].forEach(id=>rnd(id,0,18));['synAA','synBA','synCA'].forEach(id=>rnd(id,-180,180));['synHue','synHueDepth','interAmt','synDisp','mask','scan','saturation','chroma','noise','flicker','fbAmt','fbBlur','fbDrift','fbDecay'].forEach(id=>rnd(id,0,1));['modR','modG','modB'].forEach(id=>rnd(id,0,1));log('Randomized ✨')});const snap=localStorage.getItem('crt_synth_snapshot');if(snap)try{setState(JSON.parse(snap));log('Snapshot restored',true)}catch{}
+// Live Cycle
+let liveLast=0;const liveStateKey='liveCycleState';
+(()=>{try{const s=JSON.parse(localStorage.getItem(liveStateKey)||'{}');if(s.enabled){$('live').checked=true;$('liveSecs').value=s.secs||20;$('liveBlend').value=s.blend||'cut'}}catch{}})();
+const saveLive=()=>{try{localStorage.setItem(liveStateKey,JSON.stringify({enabled:$('live').checked,secs:parseFloat($('liveSecs').value||20),blend:$('liveBlend').value}))}catch{}};
 
-// Update src texture
-const srcTex=srcT;function updSrc(t){if(mode==='pattern'){pat(t)}else if(mode==='image'&&bmp){if(S.width!==bmp.width||S.height!==bmp.height){S.width=bmp.width;S.height=bmp.height}SC.clearRect(0,0,S.width,S.height);SC.drawImage(bmp,0,0,S.width,S.height)}else if(mode==='video'&&V.readyState>=2){const vw=V.videoWidth||640,vh=V.videoHeight||360;if(S.width!==vw||S.height!==vh){S.width=vw;S.height=vh}SC.drawImage(V,0,0,S.width,S.height)}gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,srcTex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,S)}
+// Fullscreen (policy safe)
+function tryNativeFS(){return new Promise((res,rej)=>{const el=C;const req=el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen;if(!req) return rej('No Fullscreen API');try{const p=req.call(el);if(p&&p.then)p.then(()=>res('ok')).catch(rej);else res('ok')}catch(e){rej(e)}})}
+$('btnFS').onclick=()=>{if(!document.fullscreenElement){tryNativeFS().catch(()=>{document.body.classList.add('pf')})}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen)?.call(document);document.body.classList.remove('pf')}};
+document.addEventListener('keydown',e=>{if(e.key==='f'||e.key==='F')$('btnFS').click(); if(e.key==='l'||e.key==='L'){$('live').checked=!$('live').checked;saveLive();}});
 
-// Bind prev ring & copy
-function bindPrev(){gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,prev[(pi+2)%3]);gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,prev[(pi+1)%3]);gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,prev[(pi+0)%3])}function copyPrev(){gl.bindTexture(gl.TEXTURE_2D,prev[pi]);gl.copyTexImage2D(gl.TEXTURE_2D,0,gl.RGBA,0,0,C.width,C.height,0);pi=(pi+1)%3}
+// Audio (guarded)
+let micStream=null,analyser=null,afBuf=null;
+$('btnMic').onclick=async()=>{try{micStream=await navigator.mediaDevices.getUserMedia({audio:true});const actx=new (window.AudioContext||window.webkitAudioContext)();const src=actx.createMediaStreamSource(micStream);analyser=actx.createAnalyser();analyser.fftSize=512;src.connect(analyser);afBuf=new Uint8Array(analyser.frequencyBinCount)}catch(e){log('Mic blocked by permissions policy',false)}};
+function audioBands(){if(!analyser){$('vL').textContent='0';$('vM').textContent='0';$('vH').textContent='0';return {l:0,m:0,h:0}}analyser.getByteFrequencyData(afBuf);const n=afBuf.length;let l=0,m=0,h=0;for(let i=0;i<n;i++){const v=afBuf[i]/255;if(i<n/3)l+=v;else if(i<2*n/3)m+=v;else h+=v}l/=n/3;m/=n/3;h/=n/3;$('vL').textContent=l.toFixed(2);$('vM').textContent=m.toFixed(2);$('vH').textContent=h.toFixed(2);return {l,m,h}}
 
-// Frame
-function f(t){const time=t/1000;updSrc(time);gl.uniform1f(u.time,time);gl.uniform2f(u.res,C.width,C.height);gl.uniform1f(u.rot,(parseFloat($("rotation").value)||0)*Math.PI/180);gl.uniform1f(u.ratio,ratio());gl.uniform1f(u.zoom,num('zoom',1.02));gl.uniform1f(u.scan,num('scan',0.7));gl.uniform1f(u.mask,num('mask',0.65));gl.uniform1f(u.sat,num('saturation',1.05));gl.uniform1f(u.ca,num('chroma',0.3));gl.uniform1f(u.noise,num('noise',0.25));gl.uniform1f(u.flick,num('flicker',0.2));gl.uniform1f(u.synHue,num('synHue',0.33));gl.uniform1f(u.synHueDepth,num('synHueDepth',0.6));gl.uniform1f(u.synKey,num('synKey',0.15));gl.uniform1f(u.synSoft,num('synSoft',0.08));gl.uniform1f(u.synRot,num('synRotSpd',0));gl.uniform1f(u.fA,num('synAF',6));gl.uniform1f(u.fB,num('synBF',9));gl.uniform1f(u.fC,num('synCF',4.5));gl.uniform1f(u.angA,num('synAA',0));gl.uniform1f(u.angB,num('synBA',90));gl.uniform1f(u.angC,num('synCA',45));gl.uniform1f(u.wA,parseFloat($("synWaveA").value));gl.uniform1f(u.wB,parseFloat($("synWaveB").value));gl.uniform1f(u.wC,parseFloat($("synWaveC").value));gl.uniform1f(u.wfSteps,Math.max(1,parseFloat($("wfSteps").value)||8));gl.uniform1f(u.wfTrap,num('wfTrap',0.3));gl.uniform1f(u.wfExpK,num('wfExpK',2.5));gl.uniform1f(u.lfoAR,num('lfoARate',0.2));gl.uniform1f(u.lfoBR,num('lfoBRate',0.12));gl.uniform1f(u.lfoCR,num('lfoCRate',0.3));gl.uniform1f(u.lfoAF,num('lfoA_F',0));gl.uniform1f(u.lfoAP,num('lfoA_P',0));gl.uniform1f(u.lfoAA,num('lfoA_A',0));gl.uniform1f(u.lfoBF,num('lfoB_F',0));gl.uniform1f(u.lfoBP,num('lfoB_P',0));gl.uniform1f(u.lfoBA,num('lfoB_A',0));gl.uniform1f(u.lfoCF,num('lfoC_F',0));gl.uniform1f(u.lfoCP,num('lfoC_P',0));gl.uniform1f(u.lfoCA,num('lfoC_A',0));gl.uniform1f(u.shapeAmt,num('synShapeAmt',0));gl.uniform1f(u.shapeSize,num('synShapeSize',0.4));gl.uniform1f(u.shapeSoft,num('synShapeSoft',0.08));gl.uniform1f(u.shape2Amt,num('shape2Amt',0));gl.uniform1f(u.shape2Size,num('shape2Size',0.45));gl.uniform1f(u.shape2Soft,num('shape2Soft',0.08));gl.uniform1f(u.shape2Rot,num('shape2Rot',15));gl.uniform1f(u.shapeType,parseFloat($("shapeType").value));gl.uniform1f(u.shapeSides,num('shapeSides',6));gl.uniform1f(u.abFM,num('abFM',0));gl.uniform1f(u.bcPM,num('bcPM',0));gl.uniform1f(u.caRM,num('caRM',0));gl.uniform1f(u.modR,num('modR',0));gl.uniform1f(u.modG,num('modG',0));gl.uniform1f(u.modB,num('modB',0));gl.uniform1f(u.interMode,parseFloat($("interMode").value));gl.uniform1f(u.interAmt,num('interAmt',0.6));gl.uniform1f(u.synDisp,num('synDisp',0.8));gl.uniform1f(u.fbAmt,num('fbAmt',0));gl.uniform1f(u.fbBlur,num('fbBlur',0.5));gl.uniform1f(u.fbDrift,num('fbDrift',0.15));gl.uniform1f(u.fbTaps,Math.max(1,Math.min(3,parseInt($("fbTaps").value||'2'))));gl.uniform1f(u.fbDecay,num('fbDecay',0.6));gl.uniform1f(u.hue,num('hueRotate',0));gl.uniform1f(u.kSeg,Math.max(1,parseInt($("kSeg").value||'1')));gl.uniform1f(u.kRot,num('kRot',0));gl.uniform1f(u.pCount,Math.max(0,Math.min(64,parseInt($("pCount").value||'0'))));gl.uniform1f(u.pSize,num('pSize',2.0));gl.uniform1f(u.pSpeed,num('pSpeed',1.2));gl.uniform1f(u.pReact,num('pReact',1.0));gl.uniform1f(u.pLink,parseFloat($("pLink").value));const audMode=$('audSrc').value;const A=(audMode==='off')?[0,0,0]:[aLow,aMid,aHi];gl.uniform3f(u.audio,A[0],A[1],A[2]);const mmF=[[num('mm_a_FA',0)+num('mm_x_FA',0)*A[0],num('mm_b_FA',0),num('mm_c_FA',0)],[num('mm_a_FB',0),num('mm_b_FB',0)+num('mm_x_FB',0)*A[1],num('mm_c_FB',0)],[num('mm_a_FC',0),num('mm_b_FC',0),num('mm_c_FC',0)+num('mm_x_FC',0)*A[2]]];const mmP=[[num('mm_a_PA',0)+num('mm_x_PA',0)*A[0],num('mm_b_PA',0),num('mm_c_PA',0)],[num('mm_a_PB',0),num('mm_b_PB',0)+num('mm_x_PB',0)*A[1],num('mm_c_PB',0)],[num('mm_a_PC',0),num('mm_b_PC',0),num('mm_c_PC',0)+num('mm_x_PC',0)*A[2]]];const mmA=[[num('mm_a_AA',0)+num('mm_x_AA',0)*A[0],num('mm_b_AA',0),num('mm_c_AA',0)],[num('mm_a_AB',0),num('mm_b_AB',0)+num('mm_x_AB',0)*A[1],num('mm_c_AB',0)],[num('mm_a_AC',0),num('mm_b_AC',0),num('mm_c_AC',0)+num('mm_x_AC',0)*A[2]]];gl.uniformMatrix3fv(u.mmF,false,new Float32Array(mmF.flat()));gl.uniformMatrix3fv(u.mmP,false,new Float32Array(mmP.flat()));gl.uniformMatrix3fv(u.mmA,false,new Float32Array(mmA.flat()));gl.uniform1f(u.srcmode,mode==='synth'?1:0);bindPrev();gl.drawArrays(gl.TRIANGLES,0,6);copyPrev();requestAnimationFrame(f)}requestAnimationFrame(f);
+// Tests
+(function(){
+  const ids=['btnImg','btnVid','btnTP','btnSynth','preset','btnLoad','btnRand','btnSnap','audSrc','btnMic','fxFractal','fxPlasma','fxVoro','fxSort','sortMode','fracType','fxScale','fxSpeed','fxAmt','fbAmt','fbBlur','fbDrift','fbTaps','fbDecay','hueRot','rot','zoom','ratio','scan','mask','maskAmt','sat','chroma','noise','flick','btnFS'];
+  log('UI elements present: '+ids.every(id=>!!$(id)));
+  const rEl=$('ratio');const cases=[["4:3",4/3],["16:9",16/9],["1.25",1.25],["1,25",1.25],[" 21 : 9 ",21/9],["9:16",9/16]];
+  let ok=true;for(const[i,e]of cases){rEl.value=i;const v=ratio();const p=Math.abs(v-e)<1e-6;ok=ok&&p;log(`ratio("${i}") == ${e.toFixed(6)}`,p)}rEl.value='';
+  log('Self-tests done',ok);
+})();
 
-// Recording
-const RS=$('recStart'),RX=$('recStop'),RSE=$('recSecs'),RD=$('recDownload');let rec=null,chunks=[],rt=0,rurl='';function cleanRec(){if(rurl){URL.revokeObjectURL(rurl);rurl=''}RD.style.display='none';RD.removeAttribute('href')}const pick=()=>{const sup=t=>typeof MediaRecorder!=='undefined'&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t);const c=[{mime:'video/webm;codecs=vp9,opus'},{mime:'video/webm;codecs=vp8,opus'},{mime:'video/webm'}];for(const x of c){if(sup(x.mime))return x}return{mime:''}};function addAudio(stream){let added=0;if(mode==='video'){if(typeof V.captureStream==='function'){try{const vs=V.captureStream();vs.getAudioTracks().forEach(tr=>{try{stream.addTrack(tr);added++}catch{}})}catch(e){console.warn('video.captureStream failed',e)}}if(added===0&&(window.AudioContext||window.webkitAudioContext)){try{const AC=window.AudioContext||window.webkitAudioContext;const ac2=new AC();const dest=ac2.createMediaStreamDestination();const src=ac2.createMediaElementSource(V);src.connect(dest);src.connect(ac2.destination);dest.stream.getAudioTracks().forEach(tr=>{try{stream.addTrack(tr);added++}catch{}})}catch(e){console.warn('WebAudio capture fallback failed',e)}}}return added}RS.addEventListener('click',()=>{if(!C.captureStream||!('MediaRecorder'in window)){alert('Recording not supported.');return}cleanRec();const fps=60,stream=C.captureStream(fps);let rm=null;if(mode==='video'){rm=V.muted;if(V.muted)V.muted=false;const added=addAudio(stream);log('Audio tracks added to recording: '+added,added>0)}const opt=pick();try{rec=opt.mime?new MediaRecorder(stream,{mimeType:opt.mime}):new MediaRecorder(stream)}catch(e){try{rec=new MediaRecorder(stream)}catch(err){alert('MediaRecorder failed');if(rm!==null)V.muted=rm;return}}chunks=[];rec.ondataavailable=e=>{if(e.data&&e.data.size>0)chunks.push(e.data)};rec.onerror=e=>{console.error('Recorder error',e);log('Recorder error: '+(e?.error?.message||e.toString()),false)};rec.onstop=()=>{if(rm!==null)V.muted=rm;const blob=new Blob(chunks,{type:rec.mimeType||opt.mime||'video/webm'});if(!blob||blob.size===0){log('Recording produced empty blob',false);return}rurl=URL.createObjectURL(blob);RD.href=rurl;RD.download='crt-capture.webm';RD.style.display='inline-flex';RD.textContent='Download';log('Recording ready. Click Download.',true)};rec.start();log('Recording started',true);RS.disabled=true;RX.disabled=false;const s=Math.min(60,Math.max(1,parseInt(RSE.value)||5));rt=setTimeout(()=>{if(rec&&rec.state==='recording'){rec.stop();RS.disabled=false;RX.disabled=true}},s*1000)});RX.addEventListener('click',()=>{if(rec&&rec.state==='recording'){clearTimeout(rt);rec.stop();RS.disabled=false;RX.disabled=true}});
+// Frame update of source texture
+function updateSource(t){
+  if(sourceMode==='pattern'){pattern(t)}
+  else if(sourceMode==='image'&&bmp){if(SRC_CAN.width!==bmp.width||SRC_CAN.height!==bmp.height){SRC_CAN.width=bmp.width;SRC_CAN.height=bmp.height}SRC_CTX.drawImage(bmp,0,0,SRC_CAN.width,SRC_CAN.height)}
+  else if(sourceMode==='video'&&VID.readyState>=2){const vw=VID.videoWidth||640,vh=VID.videoHeight||360;if(SRC_CAN.width!==vw||SRC_CAN.height!==vh){SRC_CAN.width=vw;SRC_CAN.height=vh}SRC_CTX.drawImage(VID,0,0,SRC_CAN.width,SRC_CAN.height)}
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,SRC_CAN);
+}
+
+// Render loop
+function frame(ts){
+  const t=ts*0.001;
+  if($('live').checked){const secs=parseFloat($('liveSecs').value||20);if(ts-liveLast>secs*1000){liveLast=ts;saveLive();if($('liveBlend').value==='cut') $('btnRand').click(); else { // simple blend target: nudge major params
+      const n=()=>Math.random();
+      $('fxAmt').value=(parseFloat($('fxAmt').value)*0.3+0.7*n()).toFixed(3);
+      $('fxScale').value=(parseFloat($('fxScale').value)*0.6+0.4*(1+11*n())).toFixed(3);
+      $('fxSpeed').value=(parseFloat($('fxSpeed').value)*0.6+0.4*(4*n())).toFixed(3);
+      $('scan').value=(parseFloat($('scan').value)*0.5+0.5*n()).toFixed(3);
+      $('sat').value=(parseFloat($('sat').value)*0.5+0.5*(2*n())).toFixed(3);
+    }}}
+  updateSource(t);
+  const {l:audL,m:audM,h:audH}=audioBands();
+
+  gl.viewport(0,0,C.width,C.height);
+  gl.uniform2f(u.res,C.width,C.height);
+  gl.uniform1f(u.time,t);
+
+  // Effect bitflags → vec4 (WebGL1 safe)
+  const fx=[ $('fxFractal').checked?1:0, $('fxPlasma').checked?1:0, $('fxVoro').checked?1:0, $('fxSort').checked?1:0 ];
+  gl.uniform4f(u.fx,fx[0],fx[1],fx[2],fx[3]);
+
+  const sortHue = $('sortMode').value==='hue' ? 1 : 0;
+  gl.uniform1i(u.sortHue,sortHue);
+
+  // Mod matrix demo routing
+  const mmAmt=parseFloat($('mmAudAmt').value||0); // audio → fxAmt
+  const mmSc =parseFloat($('mmAScale').value||0); // A → scale
+  const mmSp =parseFloat($('mmBSpeed').value||0); // B → speed
+  const mmHue=parseFloat($('mmCHue').value||0);   // C → hue
+
+  const fxScale = parseFloat($('fxScale').value||3) * (1.0 + mmSc*Math.sin(t*2.0));
+  const fxSpeed = parseFloat($('fxSpeed').value||1) * (1.0 + mmSp*Math.sin(t*1.5));
+  const fxAmt   = Math.min(1, Math.max(0, parseFloat($('fxAmt').value||1) + mmAmt*audM*0.5));
+
+  gl.uniform1f(u.fxScale,fxScale);
+  gl.uniform1f(u.fxSpeed,fxSpeed);
+  gl.uniform1f(u.fxAmt,fxAmt);
+
+  gl.uniform1i(u.maskType,parseInt($('mask').value||'0'));
+  gl.uniform1f(u.maskAmt,parseFloat($('maskAmt').value||0.65));
+  gl.uniform1f(u.scan,parseFloat($('scan').value||0.7));
+  gl.uniform1f(u.sat,parseFloat($('sat').value||1.0));
+  gl.uniform1f(u.ca,parseFloat($('chroma').value||0.15));
+  gl.uniform1f(u.noise,parseFloat($('noise').value||0.2));
+  gl.uniform1f(u.flick,parseFloat($('flick').value||0.2));
+  gl.uniform1f(u.hue,parseFloat($('hueRot').value||0) + mmHue*60.0*Math.sin(t*0.7));
+  gl.uniform1f(u.rot,parseFloat($('rot').value||0));
+  gl.uniform1f(u.zoom,parseFloat($('zoom').value||1.0));
+  gl.uniform1f(u.ratio,ratio());
+
+  gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// Resize
+addEventListener('resize',()=>{W=innerWidth-420;H=innerHeight;C.width=W;C.height=H});
+
+// Recording (policy-safe message)
+$('btnRec').onclick=()=>log('Recording disabled in sandbox by permissions policy (MediaRecorder / capture).',false);
+$('btnStop').onclick=()=>{};
+$('dl').style.display='none';
+
 })();
 </script>
 </body>
